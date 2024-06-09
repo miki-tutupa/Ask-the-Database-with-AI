@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
+
+    <!-- Custom Css -->
+    <link rel="stylesheet" href="style/style.css" type="text/css" />
+
+    <!-- Ionic icons -->
+    <link href="https://unpkg.com/ionicons@4.2.0/dist/css/ionicons.min.css" rel="stylesheet">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700,900" rel="stylesheet">
+
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+
+    <title>
+        DataZoom - Talk to your database and explore your data
+    </title>
+
+    <style>
+        .tooltipDB {
+            color: #555;
+            position: relative;
+            cursor: pointer;
+            border-bottom: 1px dotted #555;
+            padding: 5px;
+        }
+
+            .tooltipDB:hover {
+                color: white;
+                background-color: #555;
+                font-weight: bold;
+            }
+
+            .tooltipDB .tooltiptextDB {
+                font-weight: normal;
+                visibility: hidden;
+                width: 320px;
+                background-color: #555;
+                color: white;
+                text-align: left;
+                border-radius: 5px;
+                padding: 8px;
+                position: absolute;
+                z-index: 1;
+                top: 75%; /* tooltip position */
+                left: 50%;
+                margin-left: -125px;
+                opacity: 0;
+                transition: opacity 0.4s;
+                bottom: auto;
+            }
+
+            .tooltipDB:hover .tooltiptextDB {
+                visibility: visible;
+                opacity: 1;
+            }
+
+        .spinner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .double-bounce1,
+        .double-bounce2 {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 4px solid #FFF;
+            animation: sk-bounce 2.0s infinite ease-in-out;
+        }
+
+        .double-bounce2 {
+            animation-delay: -1.0s;
+        }
+
+        @keyframes sk-bounce {
+            0%, 100% {
+                transform: scale(0);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1);
+                opacity: 0.3;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+    <!-- N A V B A R -->
+    <nav class="navbar navbar-default navbar-expand-lg fixed-top custom-navbar">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="icon ion-md-menu"></span>
+        </button>
+        <img src="images/logo.png" class="img-fluid nav-logo-mobile" alt="Logo">
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <div class="container" style="text-align:center;padding:20px;">
+                <img src="images/logo.png" class="img-fluid nav-logo-desktop" alt="Logo" style="margin-top:40px;">
+            </div>
+        </div>
+    </nav>
+    <!-- E N D  N A V B A R -->
+    <!-- H E R O -->
+    <div id="vueApp">
+        <section id="hero">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-7 content-box hero-content">
+                        <span>Data Zoom</span>
+                        <h1><b>Talk</b> to your database</h1>
+                        <p>
+                            Make a question to your database and get the information.
+                        </p>
+                        <br />
+                        <p style="font-size:14px;"><em>Try it now with our example database:</em></p>
+                        <input type="text" v-model="prompt" v-on:keyup="initialState" class="input" placeholder="Enter the question for the database..." />
+                        <button @click="askDatabase" class="btn btn-try">Send your prompt</button>
+                        <br />
+                        <div style="text-align: center;"><small><a href="javascript:;" @click="initialStateTotal">Clear form</a></small></div>
+                        <h5>Some examples:</h5>
+                        <small>How many students are there and what course are they doing?</small><br />
+                        <small>What is the course with more students?</small><br />
+                        <small>How many courses there are?</small><br />
+                        <small>What are the three departments with the highest budget?</small>
+                    </div>
+                    <div class="col-lg-5 col-md-5 col-sm-5 col-xs-5 content-box hero-content">
+                        <h4>Example database</h4>
+                        <h5>Represents a simplified version of a university's data, including information about students, courses, departments, and instructors. </h5>
+                        <h5>Here is an overview of the main tables and their relationships:</h5>
+                        <div class="tooltipDB">
+                            Course
+                            <div class="tooltiptextDB">
+                                This table stores information about courses offered by the school.<br /><br />
+                                -CourseID (int): A unique identifier for the course.<br />
+                                -Title (nvarchar): The title of the course.<br />
+                                -Credits (int): The number of credits awarded for completing the course.<br />
+                                -DepartmentID (int): A reference to the department that offers the course.
+                            </div>
+                        </div>
+                        <div class="tooltipDB">
+                            Department
+                            <div class="tooltiptextDB">
+                                This table stores information about the different departments in the school.<br /><br />
+                                -DepartmentID (int): A unique identifier for the department.<br />
+                                -Name (nvarchar): The name of the department.<br />
+                                -Budget (money): The department's budget.<br />
+                                -StartDate (datetime): The date the department was established.<br />
+                                -Administrator (int): A reference to the person who administers the department.
+                            </div>
+                        </div>
+                        <div class="tooltipDB">
+                            Person
+                            <div class="tooltiptextDB">
+                                This table stores information about people, including both staff and students.<br /><br />
+                                -PersonID (int): A unique identifier for the person.<br />
+                                -LastName (nvarchar): The person's last name.<br />
+                                -FirstName (nvarchar): The person's first name.<br />
+                                -HireDate (datetime): The date the person was hired (for staff).<br />
+                                -EnrollmentDate (datetime): The date the person enrolled (for students).<br />
+                                -Discriminator (nvarchar): Indicates whether the person is a staff member or a student.
+                            </div>
+                        </div>
+                        <div class="tooltipDB">
+                            OnsiteCourse
+                            <div class="tooltiptextDB">
+                                This table stores information about courses that are taught on-site.<br /><br />
+                                -CourseID (int): A unique identifier for the course.<br />
+                                -Location (nvarchar): The location where the course is taught.<br />
+                                -Days (nvarchar): The days of the week when the course is held.<br />
+                                -Time (smalldatetime): The time of day when the course is held.
+                            </div>
+                        </div>
+                        <div class="tooltipDB">
+                            OnlineCourse
+                            <div class="tooltiptextDB">
+                                This table stores information about courses that are taught online.<br /><br />
+                                -CourseID (int): A unique identifier for the course.<br />
+                                -URL (nvarchar): The URL for the online course content.<br />
+                            </div>
+                        </div>
+                        <div class="tooltipDB">
+                            StudentGrade
+                            <div class="tooltiptextDB">
+                                This table stores information about the grades of students in courses.<br /><br />
+                                -EnrollmentID (int): A unique identifier for the enrollment record.<br />
+                                -CourseID (int): A reference to the course in which the student is enrolled.<br />
+                                -StudentID (int): A reference to the enrolled student.<br />
+                                -Grade (decimal): The student's grade in the course.
+                            </div>
+                        </div>
+                        <div class="tooltipDB">
+                            CourseInstructor
+                            <div class="tooltiptextDB">
+                                This table stores information about the instructors of courses.<br /><br />
+                                -CourseID (int): A reference to the course being taught.<br />
+                                -PersonID (int): A reference to the instructor teaching the course.
+                            </div>
+                        </div>
+                        <div class="tooltipDB">
+                            OfficeAssignment
+                            <div class="tooltiptextDB">
+                                This table stores information about office assignments for instructors.<br /><br />
+                                -InstructorID (int): A reference to the instructor who is assigned to the office.<br />
+                                -Location (nvarchar): The location of the office.<br />
+                                -Timestamp (timestamp): A timestamp indicating the last update to the office assignment.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- E N D  H E R O -->
+        <!-- R E S U L T S -->
+        <section id="marketing">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="content-box">
+                            <div v-if="apiResponse && apiResponse.error">
+                                <h4>{{ prompt }}</h4>
+                                <p>{{ apiResponse.error }}</p>
+                            </div>
+                            <div class="table-responsive" v-if="apiResponse && !apiResponse.error">
+                                <h4>{{ prompt }}</h4>
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th v-for="key in keys" :key="key">{{ key }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="(item, index) in apiResponse" :key="index">
+                                            <td v-for="key in keys" :key="key">{{ item[key] }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div v-if="!apiResponse">
+                                <h4>Here you can view the result of your prompt.</h4>
+                                <p>Enter a question for the database in the input above to see results here.</p>
+                            </div>
+                            <br />
+                            <p><button @click="scrollToHero" class="btn btn-regular">Make another question to the database</button></p>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <div class="spinner" v-if="isLoading">
+            <div class="double-bounce1"></div>
+            <div class="double-bounce2"></div>
+        </div>
+    </div>
+    <!-- E N D  R E S U L T S -->
+    <!-- T E S T I M O N I A L S -->
+    <section id="testimonials">
+        <div class="container">
+            <div class="title-block">
+                <h2><!--<span class="rating" style="background-color: green;color:white;"><i class="icon ion-md-star"></i></span>--> Unleash the Power of Your Data with DataZoom</h2>
+                <p>Harness the full potential of your data by leveraging DataZoom's cutting-edge features. Our user-friendly platform makes complex data analysis simple, enabling you to access critical insights and make informed decisions faster than ever before. Discover how DataZoom can revolutionize the way you interact with your data and drive your business forward.</p>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="testimonial-box">
+                        <div class="row personal-info">
+                            <div class="col-md-12 col-xs-12">
+                                <h6>Understands natural language</h6>
+                            </div>
+                        </div>
+                        <p>Ask your databases questions as if you were talking to an expert. DataZoom's advanced natural language processing capabilities allow users to interact with their databases using everyday language. No need for complex SQL queries or programming knowledge. Simply type or speak your question, and DataZoom will quickly interpret and process your request, providing clear and concise answers.</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="testimonial-box">
+                        <div class="row personal-info">
+                            <div class="col-md-12 col-xs-12">
+                                <h6>Immediate access to information</h6>
+                            </div>
+                        </div>
+                        <p>Get quick and accurate answers without relying on a technical team. DataZoom empowers users to retrieve the information they need without waiting for assistance from IT or data experts. This increased independence results in reduced response times, streamlined workflows, and more efficient use of resources, allowing your team to focus on higher-level tasks and strategic initiatives.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="testimonial-box">
+                        <div class="row personal-info">
+                            <div class="col-md-12 col-xs-12">
+                                <h6>Enhanced decision-making</h6>
+                            </div>
+                        </div>
+                        <p>Identify hidden trends and opportunities in your data to drive your business growth. With DataZoom, you can easily analyze large volumes of data and uncover valuable insights that might have been overlooked. By providing accessible and digestible information, DataZoom enables better-informed decision-making, helping you identify areas for growth, improve operational efficiency, and stay ahead of the competition.</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="testimonial-box">
+                        <div class="row personal-info">
+                            <div class="col-md-12 col-xs-12">
+                                <h6>Ease of implementation</h6>
+                            </div>
+                        </div>
+                        <p>Connect and configure: In just a few steps, link your existing database to DataZoom and start enjoying simplified data analysis. Support for multiple databases and security schemes. <br />The AI model will not have access to your stored data, only to your database structure schema. All the queries done to the database are filtered and scanned to ensure the maximum security to your data.  </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+    <!-- E N D  T E S T I M O N I A L S -->
+    <!-- C A L L  T O  A C T I O N -->
+    <section id="call-to-action">
+        <div class="container text-center">
+            <h2>Take the First Step Towards Data Mastery</h2>
+            <div class="title-block">
+                <p>Ready to transform the way you interact with your data? Get in touch with us today and discover how QueryGenius can empower your business!</p>
+                <a href="mailto:info@shopworld.cloud" class="btn btn-try">Request more information</a>
+            </div>
+        </div>
+    </section>
+    <!-- E N D  C A L L  T O  A C T I O N -->
+    <!--  F O O T E R  -->
+    <footer>
+        <div class="container">
+            <div class="row">
+            </div>
+            <div class="row">
+                <div class="col-md-6 col-xs-12">
+                    <a href="#"><i class="icon ion-logo-linkedin"></i></a>
+                    <a href="#"><i class="icon ion-logo-twitter"></i></a>
+                </div>
+                <div class="col-md-6 col-xs-12">
+                    <small>Data Zoom, Shockworld Network, S.L. / 2023 &copy; All rights reserved.</small>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <!--  E N D  F O O T E R  -->
+    <!-- External JavaScripts -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/vue@next"></script>
+    <script src="scripts/app.js"></script>
+</body>

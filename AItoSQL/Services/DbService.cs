@@ -11,42 +11,22 @@ namespace AItoSQL.Services
     {
         public static string ModelsToText(string connectionString)
         {
-            List<Table> tables = new();
-
-            using (DbConnection connection = CreateConnection(connectionString))
+            if (connectionString.Contains("Server=") && connectionString.Contains("Database="))
             {
-                connection.Open();
-
-                string sql = "SELECT TABLE_NAME FROM information_schema.tables";
-                using DbCommand command = connection.CreateCommand();
-                command.CommandText = sql;
-
-                using DbDataReader reader = command.ExecuteReader();
-                while (reader.Read())
-                {
-                    List<Field> fields = new();
-                    string tableName = reader["TABLE_NAME"].ToString()!;
-
-                    string fieldSql = $"SELECT TABLE_NAME,COLUMN_NAME,IS_NULLABLE,DATA_TYPE FROM information_schema.columns WHERE TABLE_NAME = '{tableName}'";
-                    using (DbCommand fieldCommand = connection.CreateCommand())
-                    {
-                        fieldCommand.CommandText = fieldSql;
-
-                        using DbDataReader fieldReader = fieldCommand.ExecuteReader();
-                        while (fieldReader.Read())
-                        {
-                            string fieldName = fieldReader["COLUMN_NAME"].ToString()!;
-                            string dataType = fieldReader["DATA_TYPE"].ToString()!;
-
-                            fields.Add(new Field() { Name = fieldName, DataType = dataType });
-                        }
-                    }
-
-                    tables.Add(new Table() { Name = tableName, Fields = fields });
-                }
+                return GetMySqlModels(connectionString);
             }
-
-            return JsonSerializer.Serialize(tables);
+            else if (connectionString.Contains("Host=") && connectionString.Contains("Database="))
+            {
+                return GetPostgreSqlModels(connectionString);
+            }
+            else if (connectionString.Contains("Data Source="))
+            {
+                return GetSqliteModels(connectionString);
+            }
+            else
+            {
+                return GetSqlServerModels(connectionString);
+            }
         }
 
         public static string QueryDatabase(string sqlQuery, string connectionString)
@@ -136,6 +116,166 @@ namespace AItoSQL.Services
             {
                 return false;
             }
+        }
+
+        private static string GetSqlServerModels(string connectionString)
+        {
+            List<Table> tables = new();
+
+            using (DbConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+                string sql = "SELECT TABLE_NAME FROM information_schema.tables";
+                using DbCommand command = connection.CreateCommand();
+                command.CommandText = sql;
+
+                using DbDataReader reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    List<Field> fields = new();
+                    string tableName = reader["TABLE_NAME"].ToString()!;
+
+                    string fieldSql = $"SELECT TABLE_NAME,COLUMN_NAME,IS_NULLABLE,DATA_TYPE FROM information_schema.columns WHERE TABLE_NAME = '{tableName}'";
+                    using (DbCommand fieldCommand = connection.CreateCommand())
+                    {
+                        fieldCommand.CommandText = fieldSql;
+
+                        using DbDataReader fieldReader = fieldCommand.ExecuteReader();
+                        while (fieldReader.Read())
+                        {
+                            string fieldName = fieldReader["COLUMN_NAME"].ToString()!;
+                            string dataType = fieldReader["DATA_TYPE"].ToString()!;
+
+                            fields.Add(new Field() { Name = fieldName, DataType = dataType });
+                        }
+                    }
+
+                    tables.Add(new Table() { Name = tableName, Fields = fields });
+                }
+            }
+
+            return JsonSerializer.Serialize(tables);
+        }
+
+        private static string GetMySqlModels(string connectionString)
+        {
+            List<Table> tables = new();
+
+            using (DbConnection connection = new MySqlConnection(connectionString))
+            {
+                connection.Open();
+
+                string sql = "SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema = DATABASE()";
+                using DbCommand command = connection.CreateCommand();
+                command.CommandText = sql;
+
+                using DbDataReader reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    List<Field> fields = new();
+                    string tableName = reader["TABLE_NAME"].ToString()!;
+
+                    string fieldSql = $"SELECT TABLE_NAME,COLUMN_NAME,IS_NULLABLE,DATA_TYPE FROM information_schema.columns WHERE TABLE_NAME = '{tableName}' AND table_schema = DATABASE()";
+                    using (DbCommand fieldCommand = connection.CreateCommand())
+                    {
+                        fieldCommand.CommandText = fieldSql;
+
+                        using DbDataReader fieldReader = fieldCommand.ExecuteReader();
+                        while (fieldReader.Read())
+                        {
+                            string fieldName = fieldReader["COLUMN_NAME"].ToString()!;
+                            string dataType = fieldReader["DATA_TYPE"].ToString()!;
+
+                            fields.Add(new Field() { Name = fieldName, DataType = dataType });
+                        }
+                    }
+
+                    tables.Add(new Table() { Name = tableName, Fields = fields });
+                }
+            }
+
+            return JsonSerializer.Serialize(tables);
+        }
+
+        private static string GetPostgreSqlModels(string connectionString)
+        {
+            List<Table> tables = new();
+
+            using (DbConnection connection = new NpgsqlConnection(connectionString))
+            {
+                connection.Open();
+
+                string sql = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
+                using DbCommand command = connection.CreateCommand();
+                command.CommandText = sql;
+
+                using DbDataReader reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    List<Field> fields = new();
+                    string tableName = reader["table_name"].ToString()!;
+
+                    string fieldSql = $"SELECT table_name,column_name,is_nullable,data_type FROM information_schema.columns WHERE table_name = '{tableName}' AND table_schema = 'public'";
+                    using (DbCommand fieldCommand = connection.CreateCommand())
+                    {
+                        fieldCommand.CommandText = fieldSql;
+
+                        using DbDataReader fieldReader = fieldCommand.ExecuteReader();
+                        while (fieldReader.Read())
+                        {
+                            string fieldName = fieldReader["column_name"].ToString()!;
+                            string dataType = fieldReader["data_type"].ToString()!;
+
+                            fields.Add(new Field() { Name = fieldName, DataType = dataType });
+                        }
+                    }
+
+                    tables.Add(new Table() { Name = tableName, Fields = fields });
+                }
+            }
+
+            return JsonSerializer.Serialize(tables);
+        }
+
+        private static string GetSqliteModels(string connectionString)
+        {
+            List<Table> tables = new();
+
+            using (DbConnection connection = new SqliteConnection(connectionString))
+            {
+                connection.Open();
+
+                string sql = "SELECT name FROM sqlite_master WHERE type='table'";
+                using DbCommand command = connection.CreateCommand();
+                command.CommandText = sql;
+
+                using DbDataReader reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    List<Field> fields = new();
+                    string tableName = reader["name"].ToString()!;
+
+                    string fieldSql = $"PRAGMA table_info({tableName})";
+                    using (DbCommand fieldCommand = connection.CreateCommand())
+                    {
+                        fieldCommand.CommandText = fieldSql;
+
+                        using DbDataReader fieldReader = fieldCommand.ExecuteReader();
+                        while (fieldReader.Read())
+                        {
+                            string fieldName = fieldReader["name"].ToString()!;
+                            string dataType = fieldReader["type"].ToString()!;
+
+                            fields.Add(new Field() { Name = fieldName, DataType = dataType });
+                        }
+                    }
+
+                    tables.Add(new Table() { Name = tableName, Fields = fields });
+                }
+            }
+
+            return JsonSerializer.Serialize(tables);
         }
 
         #region Models

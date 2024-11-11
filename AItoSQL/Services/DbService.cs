@@ -1,6 +1,9 @@
-﻿using System.Data.SqlClient;
+using System.Data.Common;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using MySql.Data.MySqlClient;
+using Npgsql;
+using Microsoft.Data.Sqlite;
 
 namespace AItoSQL.Services
 {
@@ -10,41 +13,35 @@ namespace AItoSQL.Services
         {
             List<Table> tables = new();
 
-            // Create a SqlConnection object
-            using (SqlConnection connection = new(connectionString))
+            using (DbConnection connection = CreateConnection(connectionString))
             {
                 connection.Open();
 
-                // Get the database definition using SQL query
                 string sql = "SELECT TABLE_NAME FROM information_schema.tables";
-                using SqlCommand command = new(sql, connection);
-                // Execute the query and read the results
-                using SqlDataReader reader = command.ExecuteReader();
+                using DbCommand command = connection.CreateCommand();
+                command.CommandText = sql;
+
+                using DbDataReader reader = command.ExecuteReader();
                 while (reader.Read())
                 {
                     List<Field> fields = new();
-
-                    // Retrieve the table definition from the reader
                     string tableName = reader["TABLE_NAME"].ToString()!;
 
-                    // Retrieve the field definition using SQL query
                     string fieldSql = $"SELECT TABLE_NAME,COLUMN_NAME,IS_NULLABLE,DATA_TYPE FROM information_schema.columns WHERE TABLE_NAME = '{tableName}'";
-                    using (SqlCommand fieldCommand = new(fieldSql, connection))
+                    using (DbCommand fieldCommand = connection.CreateCommand())
                     {
-                        // Execute the field query and read the results
-                        using SqlDataReader fieldReader = fieldCommand.ExecuteReader();
+                        fieldCommand.CommandText = fieldSql;
+
+                        using DbDataReader fieldReader = fieldCommand.ExecuteReader();
                         while (fieldReader.Read())
                         {
-                            // Retrieve the field definition from the fieldReader
                             string fieldName = fieldReader["COLUMN_NAME"].ToString()!;
                             string dataType = fieldReader["DATA_TYPE"].ToString()!;
 
-                            // Save field information
                             fields.Add(new Field() { Name = fieldName, DataType = dataType });
                         }
                     }
 
-                    // Save table information
                     tables.Add(new Table() { Name = tableName, Fields = fields });
                 }
             }
@@ -62,23 +59,22 @@ namespace AItoSQL.Services
 
             string results = "";
 
-            using (SqlConnection connection = new(connectionString))
+            using (DbConnection connection = CreateConnection(connectionString))
             {
-
                 try
                 {
                     connection.Open();
 
-                    using SqlCommand command = new(sqlQuery, connection);
-                    using SqlDataReader reader = command.ExecuteReader();
+                    using DbCommand command = connection.CreateCommand();
+                    command.CommandText = sqlQuery;
+
+                    using DbDataReader reader = command.ExecuteReader();
                     List<dynamic> resultList = new();
 
                     while (reader.Read())
                     {
-                        // Create a dynamic object for each row
                         dynamic result = new System.Dynamic.ExpandoObject();
 
-                        // Read each column and add it to the dynamic object
                         for (int i = 0; i < reader.FieldCount; i++)
                         {
                             string columnName = reader.GetName(i);
@@ -90,7 +86,7 @@ namespace AItoSQL.Services
 
                     results = JsonSerializer.Serialize(resultList);
                 }
-                catch (SqlException e)
+                catch (DbException e)
                 {
                     var errorObject = new { error = $"ERROR! {e.Message} {sqlQuery}" };
                     return JsonSerializer.Serialize(errorObject);
@@ -98,6 +94,26 @@ namespace AItoSQL.Services
             }
 
             return results;
+        }
+
+        private static DbConnection CreateConnection(string connectionString)
+        {
+            if (connectionString.Contains("Server=") && connectionString.Contains("Database="))
+            {
+                return new MySqlConnection(connectionString);
+            }
+            else if (connectionString.Contains("Host=") && connectionString.Contains("Database="))
+            {
+                return new NpgsqlConnection(connectionString);
+            }
+            else if (connectionString.Contains("Data Source="))
+            {
+                return new SqliteConnection(connectionString);
+            }
+            else
+            {
+                return new SqlConnection(connectionString);
+            }
         }
 
         public static bool IsSafeQuery(string sqlQuery)
